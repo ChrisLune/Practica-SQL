@@ -2,10 +2,10 @@ create schema if not exists cluna_videoclub;
 
 set schema 'cluna_videoclub';
 
-drop table socio CASCADE;
+--drop table socio CASCADE;
 
 -- Crear la tabla Socio
-CREATE TABLE socio (
+CREATE TABLE IF NOT EXISTS socio (
     id_socio SERIAL PRIMARY KEY,
     dni VARCHAR(50) UNIQUE NOT NULL,
     nombre VARCHAR(50) NOT NULL,
@@ -16,9 +16,9 @@ CREATE TABLE socio (
     email VARCHAR(50)
 );
 
-drop table direccion CASCADE;
+--drop table direccion CASCADE;
 -- Crear la tabla Direccion
-CREATE TABLE direccion (
+CREATE TABLE IF NOT exists direccion (
     id_direccion SERIAL PRIMARY KEY,
     id_socio INTEGER REFERENCES cluna_videoclub.socio(id_socio),
     codigo_postal VARCHAR(5),
@@ -29,9 +29,9 @@ CREATE TABLE direccion (
     ext VARCHAR(50)
 );
 
-drop table pelicula CASCADE;
+--drop table pelicula CASCADE;
 -- Crear la tabla Pelicula
-CREATE TABLE pelicula (
+CREATE TABLE IF NOT exists pelicula (
     id_pelicula SERIAL PRIMARY KEY,
     titulo VARCHAR(80) NOT NULL,
     genero VARCHAR(50) NOT NULL,
@@ -39,9 +39,9 @@ CREATE TABLE pelicula (
     director VARCHAR(80)
 );
 
-drop table copia CASCADE;
+--drop table copia CASCADE;
 -- Crear la tabla Copia
-CREATE TABLE copia (
+CREATE table IF NOT EXISTS copia (
     id_copia SERIAL PRIMARY KEY,
     id_pelicula INTEGER REFERENCES cluna_videoclub.pelicula(id_pelicula),
     fecha_alquiler DATE,
@@ -49,8 +49,8 @@ CREATE TABLE copia (
     id_socio INTEGER REFERENCES cluna_videoclub.socio(id_socio)
 );
 
-drop table tmp_videoclub CASCADE;
-CREATE TABLE tmp_videoclub (
+--drop table tmp_videoclub CASCADE;
+CREATE table IF NOT EXISTS tmp_videoclub (
 	id_copia int4 NULL,
 	fecha_alquiler_texto date NULL,
 	dni varchar(50) NULL,
@@ -76,12 +76,13 @@ CREATE TABLE tmp_videoclub (
 
 -- Cargar datos en la tabla Socio
 INSERT INTO cluna_videoclub.socio (dni, nombre, apellido_1, apellido_2, fecha_nacimiento, telefono, email)
-SELECT DISTINCT dni, nombre, apellido_1, apellido_2,cast(fecha_nacimiento as date), telefono, email
-FROM tmp_videoclub;
+SELECT DISTINCT dni, nombre, apellido_1, apellido_2, CAST(fecha_nacimiento AS DATE), telefono, email
+FROM tmp_videoclub
+ON CONFLICT (dni) DO NOTHING; -- Esto ignora si ya existe un DNI
 
 -- Cargar datos en la tabla Direccion
 INSERT INTO cluna_videoclub.direccion (id_socio, codigo_postal, calle, numero, piso, letra, ext)
-SELECT s.id_socio, codigo_postal, calle, numero, piso, letra, ext
+SELECT s.id_socio, t.codigo_postal, t.calle, t.numero, t.piso, t.letra, t.ext
 FROM tmp_videoclub t
 JOIN cluna_videoclub.socio s ON t.dni = s.dni;
 
@@ -92,7 +93,7 @@ FROM tmp_videoclub;
 
 -- Cargar datos en la tabla Copia
 INSERT INTO cluna_videoclub.copia (id_pelicula, fecha_alquiler, fecha_devolucion, id_socio)
-SELECT p.id_pelicula, fecha_alquiler, fecha_devolucion, s.id_socio
+SELECT p.id_pelicula, t.fecha_alquiler, t.fecha_devolucion, s.id_socio
 FROM tmp_videoclub t
 JOIN cluna_videoclub.pelicula p ON t.titulo = p.titulo
 JOIN cluna_videoclub.socio s ON t.dni = s.dni;
